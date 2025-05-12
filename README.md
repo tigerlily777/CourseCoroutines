@@ -5,5 +5,13 @@
 ### 1.2 suspend
 关注协程和线程的脱离。
 suspend标记的方法讲在协程中执行，执行完毕之后返回到之前的线程中。
+### 1.3 coroutine in Android project
+典型用法：
+```kotlin
+private fun coroutinesStyle() = CoroutineScope(Dispatchers.Main).launch {
+    val contributors = gitHub.contributors("square", "retrofit")
+    showContributors(contributors)
+  }
+```
 
 
