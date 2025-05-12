@@ -13,5 +13,6 @@ private fun coroutinesStyle() = CoroutineScope(Dispatchers.Main).launch {
     showContributors(contributors)
   }
 ```
-
+coroutineScope
+lifecycleScope -> bind to activity or fragment lifecycle. all the coroutine will be cancelled in ```onDestroy()```
 
