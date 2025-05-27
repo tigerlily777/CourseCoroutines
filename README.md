@@ -209,3 +209,61 @@ launch(Dispatchers.IO) {
 ```
 
 那就不受线程池限制！因为挂起时它会让出线程，线程是空出来的，别人可以用！
+
+### Q4. 那理论上，如果我的每个coroutine都用了suspend fun来包裹耗时操作，那我能不能同时运行一万或者十万个coroutine在IO线程？ 有上限吗
+🎯 短答：
+
+理论上 YES，可以同时运行一万、十万个 coroutine（甚至更多）在 Dispatchers.IO 上，
+只要你用的都是非阻塞的挂起函数（suspend fun）！🌈
+但并发 coroutine 的数量也不是完全无限，系统资源最终还是有上限。
+
+🧠 原理揭秘：
+
+✅ 挂起函数 suspend fun 的神奇之处：
+
+当你调用一个真正“挂起”的函数（例如 delay()、suspend Retrofit call()）时：
+	•	它不会阻塞线程
+	•	coroutine 会被挂起，当前线程被释放，线程可以去执行别的 coroutine
+	•	所以即使你启动十万个 coroutine，它们并不会十万个线程！
+
+这就是 Kotlin 协程最强大的魔法之一：轻量级线程（fiber-like）
+
+💡 举个例子：十万个 coroutine delay
+``` fun main() = runBlocking {
+    repeat(100_000) {
+        launch(Dispatchers.IO) {
+            delay(1000) // 👈 非阻塞挂起
+        }
+    }
+    println("All coroutines launched")
+}
+```
+1 秒后，全部完成✅
+⚠️ 但注意：不是所有 suspend fun 都是真挂起！
+	•	如果你写的 suspend fun 里面偷偷用了 阻塞 API（比如 Thread.sleep()，或 Retrofit 的同步调用），那就 GG 了，会卡线程！
+ 所以重点不是你有没有写 suspend，而是你用了什么操作！
+### 💥 那到底有没有 coroutine 数量上限？有，但非常高！几个因素：
+ | 限制来源         | 描述                                                                 |
+|:------------------|:----------------------------------------------------------------------|
+| 📦 内存           | 每个 coroutine 大约消耗几 KB 内存（包含栈帧、状态机等）               |
+| 🔢 调度器开销     | coroutine 太多会增加调度队列长度，导致调度延迟                        |
+| 💻 系统能力       | 受平台影响，比如 Android 和 JVM 后端服务器的调度能力不同              |
+| 🌪 IO Dispatcher  | 虽然 coroutine 数量理论无限，但底层线程池有限，线程忙不过来时会排队挂起 |
+
+一般在 10 万 coroutine 级别系统才开始感到压力。🚀
+
+### Q:🧠 如何鉴别一个 suspend fun 是否“真挂起”？
+
+✅ 1. 看内部用的是不是：
+	•	delay() ✅
+	•	withContext() ✅
+	•	suspend fun 接口本身 ✅
+	•	Flow ✅
+	•	suspendCoroutine {} ✅
+
+❌ 2. 如果你看到：
+	•	Thread.sleep() ❌
+	•	原生 Java 的 I/O 操作（Socket、File）❌
+	•	同步数据库、同步 HTTP ❌
+
+那它就是阻塞的！
