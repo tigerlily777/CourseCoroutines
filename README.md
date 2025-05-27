@@ -47,4 +47,46 @@ lifecycleScope -> bind to activity or fragment lifecycle. all the coroutine will
 ### 1.6 withContext pt2
 
 
+## 杠精式问答
+### Q1.什么叫从当前的线程中挂起?
+🧠 一句话解释：
+
+“从当前线程中挂起”就是：
+➤ 暂时中止这个 coroutine 的执行，释放当前线程给别人用，等条件成熟了再回来继续执行。
+
+⸻
+🎭 类比一下：
+
+想象你是个打工人（coroutine），在公司唯一的会议室（线程）开会。
+	•	普通函数 call：你进去就霸着会议室不走，别人都得等你讲完；
+	•	挂起函数 call：你说：“哦，这一段我等老板批准才能继续，那我先出去吃个饭，会议室给别人用吧！”
+	•	老板批准之后你再回来，从你中断的位置继续讲下去。
+
+⸻
+
+🔍 技术角度解释：
+
+在协程中，如果你调用了一个挂起函数（比如 delay()、withContext()、await()），这个 coroutine 会：
+	1.	暂停自己
+	2.	当前线程不再被你占用
+	3.	调度器会安排别的 coroutine 用这条线程
+	4.	当条件满足（比如 delay 时间到了，或者网络结果返回了）时：
+	5.	你被恢复继续执行，从挂起的位置继续往下走
+```
+CoroutineScope(Dispatchers.Default).launch {
+    println("A - ${Thread.currentThread().name}") // 打印当前线程名
+    delay(1000) // 这里挂起，当前线程可以去干别的事了
+    println("B - ${Thread.currentThread().name}") // 可能恢复在同一个线程，也可能不是
+}
+```
+output may be:
+```
+A - DefaultDispatcher-worker-1
+...等1秒...
+B - DefaultDispatcher-worker-2 (有可能)
+```
+说明你这个 coroutine 中途挂起了，而且恢复执行时可能换了个线程！
+
+
+
 
