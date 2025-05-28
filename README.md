@@ -267,3 +267,10 @@ launch(Dispatchers.IO) {
 	•	同步数据库、同步 HTTP ❌
 
 那它就是阻塞的！
+
+### Q6:如果我发送一个网络请求， fun getData，但是我不标注成suspend function，当我运行的时候，我也在coroutineScope里去叫了getData，会发生什么？和我用suspend 包裹起来再叫，有神马区别
+🎯 先来直接回答：
+
+如果你不标注成 suspend，但在 coroutineScope 里调用 getData()，
+那这个函数就会 直接在当前线程里同步执行 ——
+⚠️ 不会挂起，也不能让出线程！
