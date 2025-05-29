@@ -395,5 +395,5 @@ getData() running on DefaultDispatcher-worker-3
 Result: Fetched Data on DefaultDispatcher-worker-3
 ```
 🧠 表示：
-	•	启动和恢复执行都在 IO dispatcher 上的线程！
-	•	真正的数据传输并不在这个线程，是 OkHttp 内部搞的！
+	• 启动和恢复执行都在 IO dispatcher 上的线程！
+	• 真正的数据传输并不在这个线程，是 OkHttp 内部搞的！
