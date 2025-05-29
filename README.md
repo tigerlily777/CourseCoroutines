@@ -329,3 +329,71 @@ launch { getData() } 本身不能帮你“自动挂起同步代码”！
 
 你在 coroutine 里喊一个不肯让座的家伙（非-suspend函数）干事，结果就是：
 别人全排队，这人独占资源，线程效率低爆了！
+
+### Q: 这个例子里面，getData的时候 这个协程会从IO线程上suspend，等到getData拿到结果的时候再回来继续执行对吧，那getData发生的过程中，数据一点点传输回来，这件事在哪发生的？ 还有println(result) 这句也是在IO线程上执行的吗
+```
+CoroutineScope(Dispatchers.IO).launch {
+    val result = getData()
+    println(result)
+}
+```
+A: 🎬 第一步：CoroutineScope(Dispatchers.IO).launch
+	•	新建了一个 coroutine，调度器选的是 Dispatchers.IO
+	•	所以这整个协程最初会被调度到 IO 线程池 的某个线程上执行
+
+⸻
+
+🛫 第二步：执行到 getData()（suspend function）
+
+如果 getData() 是一个真正挂起的 suspend 网络请求，比如 Retrofit + Kotlin Coroutine Adapter，那事情是这样发生的：
+
+⚠️ 在调用 getData() 时，协程会「挂起」，释放当前线程。
+
+然后：
+	1.	Retrofit 会发起一个 HTTP 请求（通常底层由 OkHttp 处理）
+	2.	OkHttp 会在 自己内部的线程池（跟 coroutine 无关！） 中进行网络通信，包括连接服务器、读取字节流、写入 buffer、监听 socket 等
+	3.	数据是一点点地通过 OkHttp 的 socket 线程 接收的，而不是 coroutine 的线程
+
+✅ 所以：数据接收、解析这些底层活，根本不在 coroutine 的线程中完成！
+
+⸻
+
+💾 第三步：收到结果后 resume coroutine
+
+当网络响应完成后，OkHttp + CoroutineAdapter 会：
+	•	在某个调度器（通常是原来的 IO dispatcher）上 resume coroutine
+	•	也就是，协程会「回到 Dispatchers.IO 上的某个线程」继续执行下一行代码
+
+ 🖨️ 第四步：println(result) 是在哪个线程执行的？
+
+✅ 答案是：
+
+仍然在 Dispatchers.IO 的某个线程上！
+
+协程 resume 后的代码，会继续在它当初挂起前所在的 dispatcher（IO）上执行，除非你手动 withContext() 切换了 dispatcher！
+
+🧪 实验验证一下！
+
+来个简单代码片段：
+```
+suspend fun getData(): String {
+    println("getData() running on ${Thread.currentThread().name}")
+    delay(1000) // 模拟挂起的 IO 操作
+    return "Fetched Data"
+}
+
+fun main() = runBlocking {
+    CoroutineScope(Dispatchers.IO).launch {
+        val result = getData()
+        println("Result: $result on ${Thread.currentThread().name}")
+    }.join()
+}
+```
+output:
+```
+getData() running on DefaultDispatcher-worker-3
+Result: Fetched Data on DefaultDispatcher-worker-3
+```
+🧠 表示：
+	•	启动和恢复执行都在 IO dispatcher 上的线程！
+	•	真正的数据传输并不在这个线程，是 OkHttp 内部搞的！
