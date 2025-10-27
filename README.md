@@ -1,4 +1,4 @@
-# [《Kotlin 协程完全教程》](https://www.youtube.com/watch?v=FE1XVkvFuvQ&t=711s&ab_channel=%E6%89%94%E7%89%A9%E7%BA%BF)源码 + notes
+# [《Kotlin coroutine course》](https://www.youtube.com/watch?v=FE1XVkvFuvQ&t=711s&ab_channel=%E6%89%94%E7%89%A9%E7%BA%BF)source code + study notes
 
 ##1. Basic
 ### 1.1_launch
@@ -9,7 +9,7 @@ suspend标记的方法will be running on a coroutine，执行完毕之后返回�
 I always prefer **viewModelScope** for business logic because it survives configuration changes and gets automatically cancelled when the ViewModel is cleared.
 **lifecycleScope** is used when the logic is strictly tied to the UI lifecycle.
 And for grouping multiple suspending tasks together with structured concurrency, I use **coroutineScope** or **supervisorScope** depending on whether I want failures to propagate or isolate.
-典型用法：
+Usecase：
 ```kotlin
 private fun coroutinesStyle() = CoroutineScope(Dispatchers.Main).launch {
     val contributors = gitHub.contributors("square", "retrofit")
@@ -21,6 +21,17 @@ coroutineScope ->
 viewModelScope ->
 
 lifecycleScope -> bind to activity or fragment lifecycle. all the coroutine will be cancelled in ```onDestroy()```
+in Fragment
+```kotlin
+viewLifecycleOwner.lifecycleScope.launch {
+    repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.uiState.collect { ui ->
+            updateUI(ui) // only run when UI is visibile.
+        }
+    }
+}
+```
+Use lifecycleScope for actions that needs to be done only when UI is visible, e.g: snackbar/toast message/collect flow from viewmodel to update UI, 
 
 ### 1.4 withContext
 ```kotlin
