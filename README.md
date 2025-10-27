@@ -6,6 +6,9 @@
 关注协程和线程的脱离。
 suspend标记的方法will be running on a coroutine，执行完毕之后返回到之前的线程中。
 ### 1.3 coroutine in Android project
+I always prefer **viewModelScope** for business logic because it survives configuration changes and gets automatically cancelled when the ViewModel is cleared.
+**lifecycleScope** is used when the logic is strictly tied to the UI lifecycle.
+And for grouping multiple suspending tasks together with structured concurrency, I use **coroutineScope** or **supervisorScope** depending on whether I want failures to propagate or isolate.
 典型用法：
 ```kotlin
 private fun coroutinesStyle() = CoroutineScope(Dispatchers.Main).launch {
