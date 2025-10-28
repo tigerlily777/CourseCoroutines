@@ -34,6 +34,8 @@ viewLifecycleOwner.lifecycleScope.launch {
 Use lifecycleScope for actions that needs to be done only when UI is visible, e.g: snackbar/toast message/collect flow from viewmodel to update UI, 
 
 ### 1.4 withContext
+use withContext when it's needed to switch threads to run a specific part of a suspending function efficiently without creating a new coroutine.
+It keeps structured concurrency, supports returning results, and ensures we are on the correct dispatcher for the job
 ```kotlin
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -56,6 +58,17 @@ Use lifecycleScope for actions that needs to be done only when UI is visible, e.
 ```
 第二段会等待上一段执行完再执行
 
+** WRONG USECASE**
+```
+viewModelScope.launch {
+    withContext(Dispatchers.Main) {
+        // UI 已经在主线程了，不需要切！
+    }
+}
+```
+viewModelScope.launch { ... }
+👉 默认使用的调度器是 Dispatchers.Main.immediate
+也就是说，启动时就在主线程（UI 线程）运行, 再 withContext(Dispatchers.Main) 等于是没必要再转一次车。
 
 ### 1.5 custom suspend
 ### 1.6 withContext pt2
