@@ -72,7 +72,84 @@ viewModelScope.launch { ... }
 
 ### 1.5 custom suspend
 ### 1.6 withContext pt2
+### 1.7 multiple suspend functions
+✅ A 等 B：顺序执行
+```
+suspend fun work() {
+    taskA()
+    taskB()
+}
+```
+✅ A 和 B 同时干活，各忙各的：并行执行
+```
+suspend fun work() = coroutineScope {
+    val a = async { taskA() }
+    val b = async { taskB() }
+    a.await()
+    b.await()
+}
+```
+生活类比：
+	•	洗衣机洗衣服
+	•	同时你煮饭
+→ 两边同时进行
+→ await = 等他们都完成，才吃饭 ✅
 
+✅ async + await = 高并发、性能好
+✅ 谁先完成就谁先回来：真正的独立工作
+```
+val job1 = launch { taskA() }
+val job2 = launch { taskB() }
+// 谁先完成就先结束整体流程
+```
+or
+```
+job1.join()
+job2.join()
+```
+
+one more example
+```
+suspend fun doTasks() = coroutineScope {
+    val job1 = launch {
+        delay(1000)
+        println("Task A done")
+    }
+
+    val job2 = launch {
+        delay(500)
+        println("Task B done")
+    }
+
+    println("wait for both to finish…")
+    job1.join()
+    job2.join()
+    println("All done！🚀")
+}
+```
+output:
+```
+wait for both to finish…
+Task B done
+Task A done
+All done！🚀
+```
+### 1.8 Thread safety - Mutex
+多线程并发共享同一份数据时，就可能出问题 → 线程安全问题 -> Race Condition（竞态条件）
+```
+val mutex = Mutex()
+var counter = 0
+
+suspend fun increaseCounter() {
+    mutex.withLock {
+        // ⚠️这个代码块里才是"只能一个人进来"的重要区域
+        val newValue = counter + 1
+        println("counter from $counter to $newValue")
+        counter = newValue
+    }
+}
+```
+只要是访问/修改共享的可变数据 → 都应该放进来 ✅
 
 ## 杠精式问答
 ### Q1.什么叫从当前的线程中挂起?
